@@ -1,155 +1,160 @@
 import tkinter as tk
-from tkinter import simpledialog, messagebox
+from tkinter import messagebox, simpledialog
+from tkcalendar import Calendar
 import hashlib
 
-# Estructuras de datos
 clientes = []
 expedientes = []
 agenda_citas = []
 tareas_urgentes = []
+hash_expedientes = {}
 
-# Funciones base
-def generar_hash_expediente(expediente):
-    contenido = f"{expediente['id']}{expediente['cliente']}{expediente['tipo']}{expediente['fecha']}"
-    return hashlib.md5(contenido.encode()).hexdigest()
+# Colores base
+BG_COLOR = "#f0f0f0"
+BTN_COLOR = "#2c3e50"
+BTN_TEXT = "#ffffff"
+FONT_TITLE = ("Arial", 14, "bold")
+FONT_NORMAL = ("Arial", 11)
 
+# Funciones
 def registrar_cliente():
-    nombre = simpledialog.askstring("Cliente", "Nombre completo:")
-    dpi = simpledialog.askstring("Cliente", "DPI:")
-    telefono = simpledialog.askstring("Cliente", "Teléfono:")
+    nombre = entry_nombre.get().strip()
+    dpi = entry_dpi.get().strip()
+    telefono = entry_telefono.get().strip()
     if nombre and dpi and telefono:
         clientes.append({"nombre": nombre, "dpi": dpi, "telefono": telefono})
-        messagebox.showinfo("OK", "Cliente registrado.")
+        messagebox.showinfo("Éxito", f"Cliente {nombre} registrado.")
+        entry_nombre.delete(0, tk.END)
+        entry_dpi.delete(0, tk.END)
+        entry_telefono.delete(0, tk.END)
+    else:
+        messagebox.showwarning("Error", "Completa todos los campos.")
 
 def registrar_expediente():
-    id_expediente = simpledialog.askstring("Expediente", "ID:")
-    nombre_cliente = simpledialog.askstring("Expediente", "Nombre del cliente:")
-    tipo = simpledialog.askstring("Expediente", "Tipo de caso:")
-    fecha = simpledialog.askstring("Expediente", "Fecha (YYYY-MM-DD):")
-    if id_expediente and nombre_cliente and tipo and fecha:
-        expediente = {
-            "id": id_expediente,
-            "cliente": nombre_cliente,
-            "tipo": tipo,
-            "fecha": fecha
-        }
-        expediente["hash"] = generar_hash_expediente(expediente)
-        expedientes.append(expediente)
-        messagebox.showinfo("OK", "Expediente registrado.")
+    try:
+        id_exp = int(simpledialog.askstring("ID", "ID del expediente:"))
+        if id_exp in hash_expedientes:
+            messagebox.showwarning("Error", "Ese ID ya existe.")
+            return
+        cliente = simpledialog.askstring("Cliente", "Nombre del cliente:")
+        tipo = simpledialog.askstring("Tipo", "Tipo de caso:")
+        fecha = simpledialog.askstring("Fecha", "Fecha de apertura:")
+        if cliente and tipo and fecha:
+            expediente = [id_exp, cliente, tipo, fecha]
+            expedientes.append(expediente)
+            hash_expedientes[id_exp] = expediente
+            messagebox.showinfo("Éxito", "Expediente registrado.")
+        else:
+            messagebox.showwarning("Error", "Datos incompletos.")
+    except:
+        messagebox.showwarning("Error", "ID inválido.")
 
-def agendar_cita():
-    nombre = simpledialog.askstring("Cita", "Nombre del cliente:")
-    fecha = simpledialog.askstring("Cita", "Fecha:")
-    hora = simpledialog.askstring("Cita", "Hora:")
-    motivo = simpledialog.askstring("Cita", "Motivo:")
-    if nombre and fecha and hora and motivo:
-        agenda_citas.append({"cliente": nombre, "fecha": fecha, "hora": hora, "motivo": motivo})
-        messagebox.showinfo("OK", "Cita agendada.")
+def abrir_agenda_cita():
+    ventana_cita = tk.Toplevel(ventana)
+    ventana_cita.title("Agendar Cita")
+    ventana_cita.geometry("300x400")
+    ventana_cita.configure(bg=BG_COLOR)
+
+    tk.Label(ventana_cita, text="Selecciona la fecha", font=FONT_NORMAL, bg=BG_COLOR).pack(pady=5)
+    cal = Calendar(ventana_cita, selectmode='day', date_pattern='yyyy-mm-dd')
+    cal.pack(pady=5)
+
+    tk.Label(ventana_cita, text="Hora (HH:MM):", font=FONT_NORMAL, bg=BG_COLOR).pack(pady=5)
+    entry_hora = tk.Entry(ventana_cita)
+    entry_hora.pack(pady=5)
+
+    tk.Label(ventana_cita, text="Cliente:", font=FONT_NORMAL, bg=BG_COLOR).pack(pady=5)
+    entry_cliente = tk.Entry(ventana_cita)
+    entry_cliente.pack(pady=5)
+
+    tk.Label(ventana_cita, text="Motivo:", font=FONT_NORMAL, bg=BG_COLOR).pack(pady=5)
+    entry_motivo = tk.Entry(ventana_cita)
+    entry_motivo.pack(pady=5)
+
+    def guardar_cita():
+        fecha = cal.get_date()
+        hora = entry_hora.get().strip()
+        cliente = entry_cliente.get().strip()
+        motivo = entry_motivo.get().strip()
+        if fecha and hora and cliente and motivo:
+            agenda_citas.append({"cliente": cliente, "fecha": fecha, "hora": hora, "motivo": motivo})
+            messagebox.showinfo("Éxito", "Cita agendada.")
+            ventana_cita.destroy()
+        else:
+            messagebox.showwarning("Error", "Completa todos los campos.")
+
+    tk.Button(ventana_cita, text="Agendar", command=guardar_cita, bg=BTN_COLOR, fg=BTN_TEXT).pack(pady=10)
+
+def mostrar_agenda():
+    if not agenda_citas:
+        messagebox.showinfo("Agenda vacía", "No hay citas registradas.")
+        return
+    texto = ""
+    for cita in agenda_citas:
+        texto += f"{cita['fecha']} {cita['hora']} - {cita['cliente']} ({cita['motivo']})\n"
+    messagebox.showinfo("Agenda de citas", texto)
 
 def agregar_tarea():
     tarea = simpledialog.askstring("Tarea urgente", "Descripción:")
     if tarea:
         tareas_urgentes.append(tarea)
-        messagebox.showinfo("OK", "Tarea agregada.")
+        messagebox.showinfo("Éxito", "Tarea agregada.")
+    else:
+        messagebox.showwarning("Error", "No se ingresó ninguna tarea.")
 
 def atender_tarea():
     if tareas_urgentes:
         tarea = tareas_urgentes.pop()
-        messagebox.showinfo("Tarea atendida", tarea)
+        messagebox.showinfo("Tarea atendida", f"Se atendió: {tarea}")
     else:
         messagebox.showinfo("Sin tareas", "No hay tareas urgentes.")
 
-def buscar_cliente_binaria():
-    nombre = simpledialog.askstring("Buscar cliente", "Nombre:")
-    lista_ordenada = sorted(clientes, key=lambda x: x["nombre"])
-    izquierda, derecha = 0, len(lista_ordenada) - 1
-    while izquierda <= derecha:
-        medio = (izquierda + derecha) // 2
-        actual = lista_ordenada[medio]["nombre"]
-        if actual.lower() == nombre.lower():
-            messagebox.showinfo("Cliente encontrado", str(lista_ordenada[medio]))
-            return
-        elif actual.lower() < nombre.lower():
-            izquierda = medio + 1
+def buscar_expediente_hash():
+    try:
+        id_exp = int(simpledialog.askstring("Buscar expediente", "ID del expediente:"))
+        resultado = hash_expedientes.get(id_exp)
+        if resultado:
+            messagebox.showinfo("Expediente encontrado", str(resultado))
         else:
-            derecha = medio - 1
-    messagebox.showinfo("No encontrado", "Cliente no registrado.")
+            messagebox.showinfo("No encontrado", "Expediente no registrado.")
+    except:
+        messagebox.showwarning("Error", "ID inválido.")
 
-def ordenar_expedientes_por_cliente_burbuja():
-    n = len(expedientes)
-    for i in range(n):
-        for j in range(0, n - i - 1):
-            if expedientes[j]["cliente"] > expedientes[j + 1]["cliente"]:
-                expedientes[j], expedientes[j + 1] = expedientes[j + 1], expedientes[j]
-    resultado = "\n".join(str(e) for e in expedientes)
-    messagebox.showinfo("Ordenados por cliente", resultado)
-
-def ordenar_expedientes_por_tipo():
-    lista = expedientes.copy()
-    n = len(lista)
-    gap = n // 2
-    while gap > 0:
-        for i in range(gap, n):
-            temp = lista[i]
-            j = i
-            while j >= gap and lista[j - gap]["tipo"] > temp["tipo"]:
-                lista[j] = lista[j - gap]
-                j -= gap
-            lista[j] = temp
-        gap //= 2
-    resultado = "\n".join(str(e) for e in lista)
-    messagebox.showinfo("Ordenados por tipo", resultado)
-
-def ordenar_expedientes_por_fecha(lista):
-    if len(lista) <= 1:
-        return lista
-    pivote = lista[0]
-    menores = [x for x in lista[1:] if x["fecha"] <= pivote["fecha"]]
-    mayores = [x for x in lista[1:] if x["fecha"] > pivote["fecha"]]
-    return ordenar_expedientes_por_fecha(menores) + [pivote] + ordenar_expedientes_por_fecha(mayores)
-
-def mostrar_expedientes_ordenados_por_fecha():
-    ordenados = ordenar_expedientes_por_fecha(expedientes.copy())
-    resultado = "\n".join(str(e) for e in ordenados)
-    messagebox.showinfo("Ordenados por fecha", resultado)
-
-def contar_tipo():
-    tipo = simpledialog.askstring("Contar expedientes", "Tipo de caso:")
-    def contar(i=0):
-        if i >= len(expedientes): return 0
-        return (1 if expedientes[i]["tipo"].lower() == tipo.lower() else 0) + contar(i + 1)
-    total = contar()
-    messagebox.showinfo("Total", f"Expedientes tipo '{tipo}': {total}")
-
-def verificar_integridad():
-    id_buscar = simpledialog.askstring("Verificar expediente", "ID:")
-    encontrado = next((e for e in expedientes if e["id"] == id_buscar), None)
-    if encontrado:
-        actual = generar_hash_expediente(encontrado)
-        estado = "Íntegro" if actual == encontrado["hash"] else "Modificado"
-        messagebox.showinfo("Resultado", estado)
-    else:
-        messagebox.showinfo("No encontrado", "Expediente no existe.")
-
-# Interfaz básica
+# Interfaz principal
 ventana = tk.Tk()
-ventana.title("Bufete de Abogadas — Versión Técnica")
+ventana.title("Bufete de Abogadas — Sistema")
+ventana.geometry("500x650")
+ventana.configure(bg=BG_COLOR)
 
-opciones = [
-    ("Registrar cliente", registrar_cliente),
-    ("Registrar expediente", registrar_expediente),
-    ("Agendar cita", agendar_cita),
-    ("Agregar tarea urgente", agregar_tarea),
-    ("Atender tarea urgente", atender_tarea),
-    ("Buscar cliente por nombre (binaria)", buscar_cliente_binaria),
-    ("Ordenar expedientes por nombre del cliente (burbuja)", ordenar_expedientes_por_cliente_burbuja),
-    ("Ordenar expedientes por tipo (Shell Sort)", ordenar_expedientes_por_tipo),
-    ("Ordenar expedientes por fecha (Quick Sort)", mostrar_expedientes_ordenados_por_fecha),
-    ("Contar expedientes por tipo (recursivo)", contar_tipo),
-    ("Verificar integridad de expediente (hashing)", verificar_integridad),
+# Sección clientes
+tk.Label(ventana, text="Registro de Cliente", font=FONT_TITLE, bg=BG_COLOR).pack(pady=10)
+entry_nombre = tk.Entry(ventana, width=40)
+entry_nombre.pack(pady=2)
+entry_nombre.insert(0, "Nombre completo")
+
+entry_dpi = tk.Entry(ventana, width=40)
+entry_dpi.pack(pady=2)
+entry_dpi.insert(0, "DPI")
+
+entry_telefono = tk.Entry(ventana, width=40)
+entry_telefono.pack(pady=2)
+entry_telefono.insert(0, "Teléfono")
+
+tk.Button(ventana, text="Registrar Cliente", command=registrar_cliente, bg=BTN_COLOR, fg=BTN_TEXT).pack(pady=5)
+
+# Sección funciones
+tk.Label(ventana, text="Gestión del Sistema", font=FONT_TITLE, bg=BG_COLOR).pack(pady=10)
+
+botones = [
+    ("Registrar Expediente", registrar_expediente),
+    ("Agendar Cita", abrir_agenda_cita),
+    ("Mostrar Agenda", mostrar_agenda),
+    ("Agregar Tarea Urgente", agregar_tarea),
+    ("Atender Tarea Urgente", atender_tarea),
+    ("Buscar Expediente por ID", buscar_expediente_hash),
 ]
 
-for texto, funcion in opciones:
-    tk.Button(ventana, text=texto, command=funcion).pack(fill="x", padx=10, pady=2)
+for texto, funcion in botones:
+    tk.Button(ventana, text=texto, command=funcion, width=40, bg=BTN_COLOR, fg=BTN_TEXT).pack(pady=3)
 
 ventana.mainloop()
